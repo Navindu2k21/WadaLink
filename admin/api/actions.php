@@ -32,6 +32,44 @@ if ($action === 'approve_provider' && !empty($id)) {
             break;
         }
     }
+} elseif ($action === 'suspend_provider' && !empty($id)) {
+    $providerId = (int)$id;
+    foreach ($_SESSION['wedalink_providers'] as &$provider) {
+        if ($provider['id'] === $providerId) {
+            $provider['status'] = 'suspended';
+            array_unshift($_SESSION['wedalink_logs'], [
+                'id' => time(),
+                'action' => "Admin suspended provider account {$provider['name']} ({$provider['trade']})",
+                'detail' => 'Compliance audit flag triggered',
+                'time' => 'Just now',
+                'type' => 'suspension'
+            ]);
+            $response = ['success' => true, 'message' => "Provider #{$providerId} suspended."];
+            break;
+        }
+    }
+} elseif ($action === 'export_csv') {
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename=wedalink_provider_directory_' . date('Ymd_His') . '.csv');
+    $output = fopen('php://output', 'w');
+    fputcsv($output, ['ID', 'Full Name', 'NIC', 'Trade', 'Specialization', 'Phone', 'City', 'Province', 'Experience', 'Status', 'Registered Date']);
+    foreach ($_SESSION['wedalink_providers'] as $p) {
+        fputcsv($output, [
+            $p['id'],
+            $p['name'],
+            $p['nic'] ?? '',
+            $p['trade'],
+            $p['specialization'] ?? '',
+            $p['phone'],
+            $p['city'] ?? $p['location'],
+            $p['province'] ?? '',
+            $p['experience'],
+            $p['status'],
+            ($p['registered_day'] ?? '') . ' ' . ($p['registered_time'] ?? '')
+        ]);
+    }
+    fclose($output);
+    exit;
 } elseif ($action === 'reject_provider' && !empty($id)) {
     $providerId = (int)$id;
     $reason = $_GET['reason'] ?? 'Incomplete documentation';
